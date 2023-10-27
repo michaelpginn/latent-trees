@@ -34,7 +34,7 @@ def train(batch_size=16, train_epochs=100, seed=0):
     model = BertForSequenceClassification(config=config).to(device)
 
     args = TrainingArguments(
-        output_dir=f"./training-checkpoints",
+        output_dir=f"../training-checkpoints",
         evaluation_strategy="epoch",
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
