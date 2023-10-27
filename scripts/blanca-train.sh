@@ -17,6 +17,6 @@ module load anaconda
 conda activate AutoIGT
 
 # Run Python Script
-cd ~/projects/migi8081/latent-trees/src
+cd /projects/migi8081/latent-trees/src
 
 python3 train.py
