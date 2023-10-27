@@ -40,7 +40,7 @@ def compute_metrics(eval_pred):
         'f1': f1
     }
 @click.command()
-def train(batch_size=16, train_epochs=100, seed=0):
+def train(batch_size=4, train_epochs=100, seed=0):
     random.seed(seed)
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name='transformer-no-ft', config={
         "random-seed": seed,
