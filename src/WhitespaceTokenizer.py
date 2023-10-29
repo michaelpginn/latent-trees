@@ -1,5 +1,6 @@
 from transformers import PreTrainedTokenizer
 from collections import Counter
+import json
 
 class WhitespaceTokenizer(PreTrainedTokenizer):
     def __init__(self, vocab=None, max_length=1024, **kwargs):
@@ -61,3 +62,17 @@ class WhitespaceTokenizer(PreTrainedTokenizer):
             "input_ids": input_ids,
             "attention_mask": attention_mask,
         }
+
+    # Saving
+    def save_vocabulary(self, save_directory):
+        vocab_file = f"{save_directory}/vocab.json"
+        with open(vocab_file, 'w') as f:
+            json.dump(self.vocab, f)
+        return (vocab_file,)
+
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
+        vocab_file = f"{pretrained_model_name_or_path}/vocab.json"
+        with open(vocab_file, 'r') as f:
+            vocab = json.load(f)
+        return cls(vocab, *args, **kwargs)

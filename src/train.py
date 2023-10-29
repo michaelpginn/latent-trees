@@ -2,43 +2,21 @@ import click
 import torch
 import wandb
 import datasets
-from tokenizer import WhitespaceTokenizer
+from WhitespaceTokenizer import WhitespaceTokenizer
 from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer
 import random
 import numpy as np
+
+from eval import eval_preds
 
 device = "cuda:0" if torch.cuda.is_available() else "mps"
 
 def compute_metrics(eval_pred):
     labels = eval_pred.label_ids
     preds = np.argmax(eval_pred.predictions, axis=-1)
+    return eval_preds(preds, labels)
 
-    # Initialize variables to count true positives, false positives, etc.
-    true_pos = np.zeros(np.max(labels) + 1)
-    false_pos = np.zeros(np.max(labels) + 1)
-    true_neg = np.zeros(np.max(labels) + 1)
-    false_neg = np.zeros(np.max(labels) + 1)
 
-    # Count labels and predictions
-    for l, p in zip(labels, preds):
-        if l == p:
-            true_pos[l] += 1
-        else:
-            false_pos[p] += 1
-            false_neg[l] += 1
-
-    # Calculate metrics
-    precision = np.sum(true_pos / (true_pos + false_pos + 1e-13)) / len(true_pos)
-    recall = np.sum(true_pos / (true_pos + false_neg + 1e-13)) / len(true_pos)
-    f1 = 2 * precision * recall / (precision + recall + 1e-13)
-    accuracy = np.sum(true_pos) / len(labels)
-
-    return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1
-    }
 @click.command()
 def train(batch_size=4, train_epochs=100, seed=0):
     random.seed(seed)
@@ -80,6 +58,9 @@ def train(batch_size=4, train_epochs=100, seed=0):
     )
 
     trainer.train()
+
+    trainer.save_model(f"../models/transformer_id")
+    tokenizer.save_vocabulary("../models/transformer_id")
 
 
 if __name__ == "__main__":
