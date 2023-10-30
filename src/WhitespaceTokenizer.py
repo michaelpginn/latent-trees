@@ -1,6 +1,8 @@
 from transformers import PreTrainedTokenizer
 from collections import Counter
 import json
+import torch
+import numpy as np
 
 class WhitespaceTokenizer(PreTrainedTokenizer):
     def __init__(self, vocab=None, max_length=1024, **kwargs):
@@ -54,12 +56,14 @@ class WhitespaceTokenizer(PreTrainedTokenizer):
         input_ids = [self.convert_tokens_to_ids(tokens) for tokens in inputs]
         input_ids = [self.build_inputs_with_special_tokens(ids) for ids in input_ids]
 
-        input_ids = [ids[:self.model_max_length] + [0] * (self.model_max_length - len(ids)) for ids in input_ids]
+        padded_input_ids = [ids[:self.model_max_length] + [0] * (self.model_max_length - len(ids)) for ids in input_ids]
         attention_mask = [[1] * min(len(ids), self.model_max_length) + [0] * (self.model_max_length - len(ids)) for ids in
                           input_ids]
+        padded_input_ids = np.array(padded_input_ids)
+        attention_mask = np.array(attention_mask)
 
         return {
-            "input_ids": input_ids,
+            "input_ids": padded_input_ids,
             "attention_mask": attention_mask,
         }
 

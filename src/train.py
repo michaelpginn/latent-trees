@@ -6,6 +6,7 @@ from WhitespaceTokenizer import WhitespaceTokenizer
 from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer
 import random
 import numpy as np
+from torch.utils.data import DataLoader
 
 from eval import eval_preds
 
@@ -28,7 +29,7 @@ def train(batch_size=4, train_epochs=100, seed=0):
     dataset = datasets.load_dataset("michaelginn/latent-trees-agreement")
     tokenizer = WhitespaceTokenizer()
     tokenizer.learn_vocab([row['text'] for row in dataset['train']])
-    dataset = dataset.map(tokenizer.tokenize_batch, batched=True)
+    dataset = dataset.map(tokenizer.tokenize_batch, batched=True, load_from_cache_file=False)
 
     # Create random initialized BERT model
     config = BertConfig(vocab_size=tokenizer.vocab_size, num_labels=2, max_position_embeddings=tokenizer.model_max_length)
@@ -48,7 +49,6 @@ def train(batch_size=4, train_epochs=100, seed=0):
         report_to='wandb'
     )
 
-
     trainer = Trainer(
         model,
         args,
@@ -61,7 +61,6 @@ def train(batch_size=4, train_epochs=100, seed=0):
 
     trainer.save_model(f"../models/transformer_id")
     tokenizer.save_vocabulary("../models/transformer_id")
-
 
 if __name__ == "__main__":
     train()
