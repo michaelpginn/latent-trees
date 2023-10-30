@@ -27,7 +27,7 @@ def train(batch_size=4, train_epochs=100, seed=0):
     })
 
     dataset = datasets.load_dataset("michaelginn/latent-trees-agreement")
-    tokenizer = WhitespaceTokenizer()
+    tokenizer = WhitespaceTokenizer(max_length=50)
     tokenizer.learn_vocab([row['text'] for row in dataset['train']])
     dataset = dataset.map(tokenizer.tokenize_batch, batched=True, load_from_cache_file=False)
 
