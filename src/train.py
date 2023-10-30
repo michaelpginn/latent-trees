@@ -19,7 +19,7 @@ def compute_metrics(eval_pred):
 
 
 @click.command()
-def train(batch_size=4, train_epochs=100, seed=0):
+def train(batch_size=32, train_epochs=100, seed=0):
     random.seed(seed)
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name='transformer-no-ft', config={
         "random-seed": seed,
@@ -30,6 +30,8 @@ def train(batch_size=4, train_epochs=100, seed=0):
     tokenizer = WhitespaceTokenizer(max_length=50)
     tokenizer.learn_vocab([row['text'] for row in dataset['train']])
     dataset = dataset.map(tokenizer.tokenize_batch, batched=True, load_from_cache_file=False)
+
+    # toy_data = dataset['train']
 
     # Create random initialized BERT model
     config = BertConfig(vocab_size=tokenizer.vocab_size, num_labels=2, max_position_embeddings=tokenizer.model_max_length)
