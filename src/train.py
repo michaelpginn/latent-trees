@@ -26,12 +26,13 @@ def train(batch_size=32, train_epochs=100, seed=0):
         "epochs": train_epochs,
     })
 
-    dataset = datasets.load_dataset("michaelginn/latent-trees-agreement")
+    dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-ID")
     tokenizer = WhitespaceTokenizer(max_length=50)
     tokenizer.learn_vocab([row['text'] for row in dataset['train']])
     dataset = dataset.map(tokenizer.tokenize_batch, batched=True, load_from_cache_file=False)
 
-    # toy_data = dataset['train']
+    toy_data = dataset['train'].select(range(200))
+    toy_eval = dataset['train'].select(range(300, 310))
 
     # Create random initialized BERT model
     config = BertConfig(vocab_size=tokenizer.vocab_size, num_labels=2, max_position_embeddings=tokenizer.model_max_length)
@@ -54,8 +55,8 @@ def train(batch_size=32, train_epochs=100, seed=0):
     trainer = Trainer(
         model,
         args,
-        train_dataset=dataset['train'],
-        eval_dataset=dataset['test'],
+        train_dataset=toy_data,
+        eval_dataset=toy_eval,
         compute_metrics=compute_metrics,
     )
 
