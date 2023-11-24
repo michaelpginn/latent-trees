@@ -36,7 +36,7 @@ def train(batch_size=32, train_epochs=100, seed=0):
 
     # Create random initialized BERT model
     config = BertConfig(vocab_size=tokenizer.vocab_size, num_labels=2, max_position_embeddings=tokenizer.model_max_length)
-    model = BertForSequenceClassification(config=config).to(device)
+    model = BertForSequenceClassification(config=config, num_labels=2).to(device)
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",
