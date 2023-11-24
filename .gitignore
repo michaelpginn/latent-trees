@@ -184,3 +184,8 @@ fabric.properties
 # .idea
 
 wandb/
+
+models/
+training-checkpoints/
+scripts/*.err
+scripts/*.out
