@@ -14,7 +14,7 @@
 module purge
 # Load the python module
 module load anaconda
-conda activate AutoIGT
+conda activate latent-trees
 
 # Run Python Script
 cd /projects/migi8081/latent-trees/src
