@@ -29,7 +29,8 @@ class LogCallback(TrainerCallback):
 @click.option('--pretrained', is_flag=True)
 def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=0):
     random.seed(seed)
-    wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=f'transformer-pt{pretrained}-{dataset}', config={
+    run_name = f'transformer-pt{pretrained}-{dataset}'
+    wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
         "random-seed": seed,
         "epochs": train_epochs,
         "dataset": dataset,
@@ -80,8 +81,8 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
 
     trainer.train()
 
-    trainer.save_model(f"../models/transformer_id")
-    tokenizer.save_vocabulary("../models/transformer_id")
+    trainer.save_model(f"../models/{run_name}")
+    model.push_to_hub(f"michaelginn/latent-trees-{run_name}", commit_message="Add trained model")
 
 if __name__ == "__main__":
     train()
