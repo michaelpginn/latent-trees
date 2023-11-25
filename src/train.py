@@ -48,11 +48,12 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
     dataset = dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
 
     if pretrained:
-        model = BertForSequenceClassification.from_pretrained('bert-base-uncased')
+        BertConfig.from_pretrained('bert-base-uncased', num_labels=2)
     else:
         # Create random initialized BERT model
         config = BertConfig(num_labels=2, max_position_embeddings=tokenizer.model_max_length)
-        model = BertForSequenceClassification(config=config).to(device)
+
+    model = BertForSequenceClassification(config=config).to(device)
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",
