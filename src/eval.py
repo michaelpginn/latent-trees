@@ -2,6 +2,8 @@ import numpy as np
 
 def eval_preds(preds, labels):
     # Initialize variables to count true positives, false positives, etc.
+    print("PREDS", preds)
+    print("LABELS", labels)
     true_pos = np.zeros(np.max(labels) + 1)
     false_pos = np.zeros(np.max(labels) + 1)
     false_neg = np.zeros(np.max(labels) + 1)
