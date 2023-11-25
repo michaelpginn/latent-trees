@@ -28,7 +28,7 @@ class LogCallback(TrainerCallback):
 @click.command()
 @click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN'], case_sensitive=False))
 @click.option('--pretrained', is_flag=True)
-def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=0):
+def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=1):
     random.seed(seed)
     run_name = f'transformer-pt{pretrained}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
@@ -50,10 +50,10 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
     dataset = dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
 
     if pretrained:
-        BertConfig.from_pretrained('bert-base-uncased', num_labels=2)
+        config = BertConfig.from_pretrained('bert-base-uncased', num_labels=2)
     else:
         # Create random initialized BERT model
-        config = BertConfig(num_labels=2, max_position_embeddings=tokenizer.model_max_length)
+        config = BertConfig(num_labels=2)
 
     model = BertForSequenceClassification(config=config).to(device)
 
