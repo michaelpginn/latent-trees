@@ -13,9 +13,9 @@ from eval import eval_preds
 device = "cuda:0" if torch.cuda.is_available() else "mps"
 
 def compute_metrics(eval_pred):
-    print(eval_pred)
     labels = eval_pred.label_ids
     preds = np.argmax(eval_pred.predictions, axis=-1)
+    print(eval_pred.predictions)
     return eval_preds(preds, labels)
 
 
