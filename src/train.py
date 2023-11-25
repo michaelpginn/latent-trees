@@ -28,7 +28,7 @@ class LogCallback(TrainerCallback):
 @click.command()
 @click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN'], case_sensitive=False))
 @click.option('--pretrained', is_flag=True)
-def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=1):
+def train(dataset='ID', pretrained: bool = False,  batch_size=8, train_epochs=100, seed=1):
     random.seed(seed)
     run_name = f'transformer-pt{pretrained}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
@@ -62,7 +62,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         evaluation_strategy="epoch",
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=3,
+        gradient_accumulation_steps=1,
         save_strategy="epoch",
         save_total_limit=3,
         num_train_epochs=train_epochs,
