@@ -3,7 +3,7 @@ import torch
 import wandb
 import datasets
 from WhitespaceTokenizer import WhitespaceTokenizer
-from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer, TrainerCallback
+from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer, TrainerCallback, BertTokenizer
 import random
 import numpy as np
 from torch.utils.data import DataLoader
@@ -25,21 +25,34 @@ class LogCallback(TrainerCallback):
 
 
 @click.command()
-def train(batch_size=32, train_epochs=100, seed=0):
+@click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN'], case_sensitive=False))
+@click.option('--pretrained', is_flag=True)
+def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=0):
     random.seed(seed)
-    wandb.init(project='latent-trees-agreement', entity="michael-ginn", name='transformer-no-ft', config={
+    wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=f'transformer-pt{pretrained}-{dataset}', config={
         "random-seed": seed,
         "epochs": train_epochs,
+        "dataset": dataset,
+        "pretrained": pretrained
     })
 
-    dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-ID")
-    tokenizer = WhitespaceTokenizer(max_length=50)
-    tokenizer.learn_vocab([row['text'] for row in dataset['train']])
-    dataset = dataset.map(tokenizer.tokenize_batch, batched=True, load_from_cache_file=False)
+    if dataset == 'ID':
+        dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-ID")
+    else:
+        dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GEN")
 
-    # Create random initialized BERT model
-    config = BertConfig(vocab_size=tokenizer.vocab_size, num_labels=2, max_position_embeddings=tokenizer.model_max_length)
-    model = BertForSequenceClassification(config=config).to(device)
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    max_length = 100
+    def tokenize_function(example):
+        return tokenizer(example['text'], max_length=max_length, padding='max_length', truncation=True)
+    dataset = dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
+
+    if pretrained:
+        model = BertForSequenceClassification.from_pretrained('bert-base-uncased')
+    else:
+        # Create random initialized BERT model
+        config = BertConfig(num_labels=2, max_position_embeddings=tokenizer.model_max_length)
+        model = BertForSequenceClassification(config=config).to(device)
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",

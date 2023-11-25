@@ -19,4 +19,7 @@ conda activate AutoIGT
 # Run Python Script
 cd /projects/migi8081/latent-trees/src
 
-python3 train.py
+python3 train.py --dataset 'ID'
+python3 train.py --dataset 'ID' --pretrained
+python3 train.py --dataset 'GEN'
+python3 train.py --dataset 'GEN' --pretrained
