@@ -28,7 +28,8 @@ class LogCallback(TrainerCallback):
 @click.command()
 @click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN'], case_sensitive=False))
 @click.option('--pretrained', is_flag=True)
-def train(dataset='ID', pretrained: bool = False,  batch_size=8, train_epochs=100, seed=1):
+@click.option('--train_epochs', type=int)
+def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=1):
     random.seed(seed)
     run_name = f'transformer-pt{pretrained}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
@@ -46,23 +47,28 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=8, train_epochs=10
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     max_length = 100
     def tokenize_function(example):
-        return tokenizer(example['text'], max_length=max_length, padding='max_length', truncation=True)
+        return tokenizer(example['text'], max_length=max_length, truncation=True)
     dataset = dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
 
+    id2label = {0: "VIOLATION", 1: "GRAMMATICAL"}
+    label2id = {"VIOLATION": 0, "GRAMMATICAL": 1}
+
     if pretrained:
-        config = BertConfig.from_pretrained('bert-base-uncased', num_labels=2)
+        config = BertConfig.from_pretrained('bert-base-uncased', num_labels=2, id2label=id2label, label2id=label2id)
     else:
         # Create random initialized BERT model
-        config = BertConfig(num_labels=2)
+        config = BertConfig(num_labels=2, id2label=id2label, label2id=label2id)
 
     model = BertForSequenceClassification(config=config).to(device)
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",
         evaluation_strategy="epoch",
+        learning_rate=2e-5,
+        weight_decay=0.01,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=3,
         save_strategy="epoch",
         save_total_limit=3,
         num_train_epochs=train_epochs,
@@ -78,6 +84,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=8, train_epochs=10
         eval_dataset=dataset['test'],
         compute_metrics=compute_metrics,
         callbacks=[LogCallback],
+        tokenizer=tokenizer
     )
 
     trainer.train()
