@@ -84,7 +84,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         train_dataset=dataset['train'],
         eval_dataset=dataset['test'],
         compute_metrics=compute_metrics,
-        callbacks=[LogCallback, EarlyStoppingCallback],
+        callbacks=[LogCallback, EarlyStoppingCallback(early_stopping_patience=3)],
         tokenizer=tokenizer
     )
 
