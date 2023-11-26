@@ -8,6 +8,7 @@ from transformers import BertConfig, BertForSequenceClassification, TrainingArgu
 import random
 import numpy as np
 from torch.utils.data import DataLoader
+import wandb
 
 from eval import eval_preds
 
@@ -73,7 +74,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         save_strategy="epoch",
         save_total_limit=3,
         num_train_epochs=train_epochs,
-        load_best_model_at_end=False,
+        load_best_model_at_end=True,
         logging_strategy='epoch',
         report_to='wandb'
     )
@@ -82,7 +83,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         model,
         args,
         train_dataset=dataset['train'],
-        eval_dataset=dataset['test'],
+        eval_dataset=dataset['eval'],
         compute_metrics=compute_metrics,
         callbacks=[LogCallback, EarlyStoppingCallback(early_stopping_patience=3)],
         tokenizer=tokenizer
@@ -91,7 +92,12 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
     trainer.train()
 
     trainer.save_model(f"../models/{run_name}")
-    model.push_to_hub(f"michaelginn/latent-trees-{run_name}", commit_message="Add trained model")
+
+    test_eval = trainer.evaluate(dataset['test'])
+    test_eval = {k.replace('eval', 'test'): test_eval[k] for k in test_eval}
+    wandb.log(test_eval)
+
+    # model.push_to_hub(f"michaelginn/latent-trees-{run_name}", commit_message="Add trained model")
 
 if __name__ == "__main__":
     train()
