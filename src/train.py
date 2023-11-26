@@ -4,7 +4,7 @@ import wandb
 import datasets
 from WhitespaceTokenizer import WhitespaceTokenizer
 from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer, TrainerCallback, \
-    BertTokenizer, EarlyStoppingCallback
+    BertTokenizer, EarlyStoppingCallback, TrainerState, TrainerControl
 import random
 import numpy as np
 from torch.utils.data import DataLoader
@@ -25,6 +25,20 @@ class LogCallback(TrainerCallback):
     def on_log(self, args, state, control, logs=None, **kwargs):
         # Print the logs or push them to your preferred logging framework
         print(logs)
+
+
+class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
+    def __init__(self, *args, start_epoch=10, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_epoch = start_epoch
+
+    def on_evaluate(self, args, state: TrainerState, control: TrainerControl, **kwargs):
+        # Only start applying early stopping logic after start_epoch
+        if state.epoch >= self.start_epoch:
+            super().on_evaluate(args, state, control, **kwargs)
+        else:
+            # Reset the patience if we're before the start_epoch
+            self.patience = 0
 
 
 @click.command()
@@ -85,7 +99,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         train_dataset=dataset['train'],
         eval_dataset=dataset['eval'],
         compute_metrics=compute_metrics,
-        callbacks=[LogCallback, EarlyStoppingCallback(early_stopping_patience=3)],
+        callbacks=[LogCallback, DelayedEarlyStoppingCallback(early_stopping_patience=3)],
         tokenizer=tokenizer
     )
 
