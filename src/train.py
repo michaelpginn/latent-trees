@@ -3,7 +3,8 @@ import torch
 import wandb
 import datasets
 from WhitespaceTokenizer import WhitespaceTokenizer
-from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer, TrainerCallback, BertTokenizer
+from transformers import BertConfig, BertForSequenceClassification, TrainingArguments, Trainer, TrainerCallback, \
+    BertTokenizer, EarlyStoppingCallback
 import random
 import numpy as np
 from torch.utils.data import DataLoader
@@ -83,7 +84,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         train_dataset=dataset['train'],
         eval_dataset=dataset['test'],
         compute_metrics=compute_metrics,
-        callbacks=[LogCallback],
+        callbacks=[LogCallback, EarlyStoppingCallback],
         tokenizer=tokenizer
     )
 
