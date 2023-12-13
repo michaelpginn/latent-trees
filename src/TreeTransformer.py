@@ -49,14 +49,25 @@ def clones(module, N):
 def attention(query, key, value, mask=None, dropout=None, group_prob=None):
     "Compute 'Scaled Dot Product Attention'"
     d_k = query.size(-1)
+    num_attention_heads = query.size(-3)
     device = value.device
+    # print("query", query.size())
 
     scores = torch.matmul(query, key.transpose(-2, -1)) \
              / math.sqrt(d_k)
     if mask is not None:
         seq_len = query.size()[-2]
         b = torch.from_numpy(np.diag(np.ones(seq_len, dtype=np.int32), 0)).to(device)
-        scores = scores.masked_fill((mask | b) == 0, -1e9)
+        combined_mask = []
+        for row in mask:
+            combined_mask.append(row | b)
+        combined_mask = torch.stack(combined_mask)
+        # print("combined", combined_mask)
+        # NOTE: this may not be correct
+        combined_mask = combined_mask.unsqueeze(-3).repeat(1, num_attention_heads, 1, 1)
+        # print("combined unsqueezed", combined_mask)
+        # print("scores", scores.size())
+        scores = scores.masked_fill(combined_mask == 0, -1e9)
     if group_prob is not None:
         p_attn = torch.nn.functional.softmax(scores, dim=-1)
         p_attn = p_attn * group_prob.unsqueeze(1)
@@ -142,7 +153,11 @@ class GroupAttention(nn.Module):
         tri_matrix = torch.from_numpy(np.triu(np.ones([seq_len, seq_len], dtype=np.float32), 0)).to(device)
 
         # Mask for just the previous and next token
-        mask = attention_mask & (a + c)
+        mask = []
+        for row in attention_mask:
+            mask.append(row & (a+c))
+        mask = torch.stack(mask)
+        # mask = attention_mask & (a + c)
 
         key = self.linear_key(hidden_states)
         query = self.linear_query(hidden_states)
@@ -589,5 +604,5 @@ class TreeBertForSequenceClassification(BertForSequenceClassification):
             attentions=outputs.attentions,
         )
         seq_outputs.break_probs = outputs.break_probs
-        print(outputs.break_probs)
+        # print(outputs.break_probs)
         return seq_outputs

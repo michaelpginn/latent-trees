@@ -189,3 +189,4 @@ models/
 training-checkpoints/
 scripts/*.err
 scripts/*.out
+.DS_Store
