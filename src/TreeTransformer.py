@@ -372,7 +372,7 @@ class TreeBertLayer(nn.Module):
         self.seq_len_dim = 1
         self.attention = BertAttention(config)
 
-        self.group_attention = GroupAttention(config)
+        # self.group_attention = GroupAttention(config)
         if config.is_decoder:
             raise Exception("Cannot initialize TreeBertLayer in decoder mode, unsupported")
 
@@ -418,8 +418,8 @@ class TreeBertLayer(nn.Module):
         return outputs
 
     def feed_forward_chunk(self, attention_output):
-        intermediate_output = self.intermediate(attention_output[0])
-        layer_output = self.output(intermediate_output, attention_output[0])
+        intermediate_output = self.intermediate(attention_output)
+        layer_output = self.output(intermediate_output, attention_output)
         return layer_output
 
 
@@ -435,7 +435,7 @@ class TreeBertEncoder(nn.Module):
     def __init__(self, config, disable_treeing=False):
         super().__init__()
         self.config = config
-        self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layer = nn.ModuleList([TreeBertLayer(config) for _ in range(config.num_hidden_layers)])
         self.gradient_checkpointing = False
 
     def forward(
@@ -490,7 +490,7 @@ class TreeBertEncoder(nn.Module):
                     create_custom_forward(layer_module),
                     hidden_states,
                     # previous_group_probs,
-                    # attention_mask,
+                    attention_mask,
                     extended_attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
@@ -500,7 +500,7 @@ class TreeBertEncoder(nn.Module):
                 layer_outputs = layer_module(
                     hidden_states,
                     # previous_group_probs,
-                    # attention_mask,
+                    attention_mask,
                     extended_attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
