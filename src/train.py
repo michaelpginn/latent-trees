@@ -78,11 +78,11 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         # Create random initialized BERT model
         config = BertConfig(num_labels=2, id2label=id2label, label2id=label2id)
 
-    # if not use_tree_bert:
-    #     model = BertForSequenceClassification(config=config).to(device)
-    # else:
-    #     model = TreeTransformer.TreeBertForSequenceClassification(config=config).to(device)
-    model = TreeTransformer.TreeBertForSequenceClassification(config=config, disable_treeing=not use_tree_bert).to(device)
+    if not use_tree_bert:
+        model = BertForSequenceClassification(config=config).to(device)
+    else:
+        model = TreeTransformer.TreeBertForSequenceClassification(config=config).to(device)
+    # model = TreeTransformer.TreeBertForSequenceClassification(config=config, disable_treeing=not use_tree_bert).to(device)
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",
