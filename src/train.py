@@ -9,6 +9,7 @@ import random
 import numpy as np
 from torch.utils.data import DataLoader
 import wandb
+import TreeTransformer
 
 from eval import eval_preds
 
@@ -45,14 +46,16 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 @click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN'], case_sensitive=False))
 @click.option('--pretrained', is_flag=True)
 @click.option('--train_epochs', type=int)
-def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, seed=1):
+@click.option('--use_tree_bert', is_flag=True)
+def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, use_tree_bert: bool = False, seed=1):
     random.seed(seed)
     run_name = f'transformer-pt{pretrained}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
         "random-seed": seed,
         "epochs": train_epochs,
         "dataset": dataset,
-        "pretrained": pretrained
+        "pretrained": pretrained,
+        "model": "Bert" if not use_tree_bert else "TreeBert"
     })
 
     if dataset == 'ID':
@@ -75,7 +78,10 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         # Create random initialized BERT model
         config = BertConfig(num_labels=2, id2label=id2label, label2id=label2id)
 
-    model = BertForSequenceClassification(config=config).to(device)
+    if not use_tree_bert:
+        model = BertForSequenceClassification(config=config).to(device)
+    else:
+        model = TreeTransformer.TreeBertForSequenceClassification(config=config).to(device)
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",
