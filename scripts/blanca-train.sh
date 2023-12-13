@@ -4,7 +4,7 @@
 #SBATCH --ntasks=4          # Number of requested cores
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00          # Max walltime              # Specify QOS
-#SBATCH --qos=blanca-curc-gpu
+#SBATCH --qos=blanca-kann
 #SBATCH --out=train.%j.out      # Output file name
 #SBATCH --error=train.%j.err
 #SBATCH --mail-type=ALL
