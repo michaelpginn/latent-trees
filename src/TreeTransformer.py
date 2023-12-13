@@ -124,10 +124,11 @@ class TreeBertSelfAttention(BertSelfAttention):
             # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
             attention_scores = attention_scores + attention_mask
 
-        print('constituents', constituent_attention_probs)
-
-        # Component-wise multiplication between attention scores (batches * heads * sequence * sequence) and constituent attention (batches * sequence * sequence)
-        attention_scores = attention_scores * constituent_attention_probs.unsqueeze(1).repeat(1, self.num_attention_heads, 1, 1)
+        if constituent_attention_probs is not None:
+            print('constituents', constituent_attention_probs)
+            # Component-wise multiplication between attention scores (batches * heads * sequence * sequence) and
+            # constituent attention (batches * sequence * sequence)
+            attention_scores = attention_scores * constituent_attention_probs.unsqueeze(1).repeat(1, self.num_attention_heads, 1, 1)
 
         # Normalize the attention scores to probabilities.
         attention_probs = nn.functional.softmax(attention_scores, dim=-1)
