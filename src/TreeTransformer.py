@@ -38,6 +38,8 @@ from transformers.utils import (
 )
 
 import copy
+from dataclasses import dataclass
+
 
 logger = logging.get_logger(__name__)
 
@@ -175,30 +177,12 @@ class TreeBertSelfAttention(nn.Module):
         return outputs
 
 
-class TreeBertAttention(nn.Module):
+class TreeBertAttention(BertAttention):
     def __init__(self, config, position_embedding_type=None):
-        super().__init__()
+        super().__init__(config=config)
         self.self = TreeBertSelfAttention(config, position_embedding_type=position_embedding_type)
         self.output = BertSelfOutput(config)
         self.pruned_heads = set()
-
-    def prune_heads(self, heads):
-        if len(heads) == 0:
-            return
-        heads, index = find_pruneable_heads_and_indices(
-            heads, self.self.num_attention_heads, self.self.attention_head_size, self.pruned_heads
-        )
-
-        # Prune linear layers
-        self.self.query = prune_linear_layer(self.self.query, index)
-        self.self.key = prune_linear_layer(self.self.key, index)
-        self.self.value = prune_linear_layer(self.self.value, index)
-        self.output.dense = prune_linear_layer(self.output.dense, index, dim=1)
-
-        # Update hyper params and store pruned heads
-        self.self.num_attention_heads = self.self.num_attention_heads - len(heads)
-        self.self.all_head_size = self.self.attention_head_size * self.self.num_attention_heads
-        self.pruned_heads = self.pruned_heads.union(heads)
 
     def forward(
         self,
@@ -209,6 +193,7 @@ class TreeBertAttention(nn.Module):
         encoder_attention_mask: Optional[torch.FloatTensor] = None,
         past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
         output_attentions: Optional[bool] = False,
+        constituent_attention_probs: Optional[torch.FloatTensor] = None
     ) -> Tuple[torch.Tensor]:
         self_outputs = self.self(
             hidden_states,
@@ -365,12 +350,20 @@ class GroupAttention(nn.Module):
         return constituent_attention, neighboring_attention
 
 
+@dataclass
+class TreeBertLayerOutputs:
+    layer_output: torch.Tensor
+    attention_outputs: tuple
+    constituent_attention_output: Union[None | torch.Tensor]
+    neighboring_attention: Union[None | torch.Tensor]
+
+
 class TreeBertLayer(nn.Module):
     def __init__(self, config, disable_treeing=False):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
         self.seq_len_dim = 1
-        self.attention = BertAttention(config)
+        self.attention = TreeBertAttention(config)
 
         # self.group_attention = GroupAttention(config)
         if config.is_decoder:
@@ -383,7 +376,7 @@ class TreeBertLayer(nn.Module):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        # constituent_prior,
+        constituent_prior,
         attention_mask: Optional[torch.IntTensor] = None,
         extended_attention_mask: Optional[torch.FloatTensor] = None,
         head_mask: Optional[torch.FloatTensor] = None,
@@ -391,31 +384,33 @@ class TreeBertLayer(nn.Module):
         encoder_attention_mask: Optional[torch.FloatTensor] = None,
         past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
         output_attentions: Optional[bool] = False,
-    ) -> Tuple[torch.Tensor]:
+    ) -> TreeBertLayerOutputs:
+
         constituent_attention_output = None
         neighboring_attention = None
-
-        # if not self.disable_treeing:
+        if not self.disable_treeing:
             # Compute constituency attention in order to mask attention
-            # constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
+            constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
 
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
-        self_attention_outputs = self.attention(
+        self_attention_outputs = self.attention.forward(
             hidden_states,
             extended_attention_mask,
             head_mask,
             output_attentions=output_attentions,
             past_key_value=self_attn_past_key_value,
+            constituent_attention_probs=constituent_attention_output
         )
         attention_output = self_attention_outputs[0]
-        outputs = self_attention_outputs[1:]
 
         layer_output = apply_chunking_to_forward(
             self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, attention_output
         )
-        outputs = (layer_output, constituent_attention_output, neighboring_attention) + outputs
-        return outputs
+        return TreeBertLayerOutputs(layer_output=layer_output,
+                                    attention_outputs=self_attention_outputs[1:],
+                                    constituent_attention_output=constituent_attention_output,
+                                    neighboring_attention=neighboring_attention)
 
     def feed_forward_chunk(self, attention_output):
         intermediate_output = self.intermediate(attention_output)
@@ -478,6 +473,8 @@ class TreeBertEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
             past_key_value = past_key_values[i] if past_key_values is not None else None
 
+            layer_outputs: TreeBertLayerOutputs
+
             if self.gradient_checkpointing and self.training:
 
                 def create_custom_forward(module):
@@ -509,13 +506,13 @@ class TreeBertEncoder(nn.Module):
                     output_attentions,
                 )
 
-            hidden_states = layer_outputs[0]
+            hidden_states = layer_outputs.layer_output
             if use_cache:
-                next_decoder_cache += (layer_outputs[-1],)
+                next_decoder_cache += (layer_outputs.attention_outputs[-1],)
             if output_attentions:
-                all_self_attentions = all_self_attentions + (layer_outputs[1],)
+                all_self_attentions = all_self_attentions + (layer_outputs.attention_outputs[0],)
                 if self.config.add_cross_attention:
-                    all_cross_attentions = all_cross_attentions + (layer_outputs[2],)
+                    all_cross_attentions = all_cross_attentions + (layer_outputs.attention_outputs[1],)
 
             # previous_group_probs = layer_outputs[1]
             # break_probs.append(layer_outputs[2])
