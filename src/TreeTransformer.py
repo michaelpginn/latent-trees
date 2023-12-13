@@ -365,7 +365,7 @@ class TreeBertLayer(nn.Module):
         self.seq_len_dim = 1
         self.attention = TreeBertAttention(config)
 
-        # self.group_attention = GroupAttention(config)
+        self.group_attention = GroupAttention(config)
         if config.is_decoder:
             raise Exception("Cannot initialize TreeBertLayer in decoder mode, unsupported")
 
@@ -430,7 +430,7 @@ class TreeBertEncoder(nn.Module):
     def __init__(self, config, disable_treeing=False):
         super().__init__()
         self.config = config
-        self.layer = nn.ModuleList([TreeBertLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layer = nn.ModuleList([TreeBertLayer(config, disable_treeing=disable_treeing) for _ in range(config.num_hidden_layers)])
         self.gradient_checkpointing = False
 
     def forward(
@@ -486,7 +486,7 @@ class TreeBertEncoder(nn.Module):
                 layer_outputs = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(layer_module),
                     hidden_states,
-                    # previous_group_probs,
+                    previous_group_probs,
                     attention_mask,
                     extended_attention_mask,
                     layer_head_mask,
@@ -496,7 +496,7 @@ class TreeBertEncoder(nn.Module):
             else:
                 layer_outputs = layer_module(
                     hidden_states,
-                    # previous_group_probs,
+                    previous_group_probs,
                     attention_mask,
                     extended_attention_mask,
                     layer_head_mask,
