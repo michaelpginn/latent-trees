@@ -395,9 +395,9 @@ class TreeBertLayer(nn.Module):
         constituent_attention_output = None
         neighboring_attention = None
 
-        if not self.disable_treeing:
+        # if not self.disable_treeing:
             # Compute constituency attention in order to mask attention
-            constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
+            # constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
 
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
