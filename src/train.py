@@ -47,15 +47,16 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 @click.option('--pretrained', is_flag=True)
 @click.option('--train_epochs', type=int)
 @click.option('--use_tree_bert', is_flag=True)
-def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=100, use_tree_bert: bool = False, seed=1):
+def train(dataset='ID', pretrained: bool = False,  batch_size=64, train_epochs=100, use_tree_bert: bool = False, seed=1):
     random.seed(seed)
-    run_name = f'transformer-pt{pretrained}-{dataset}'
+    model_name = "BERT" if not use_tree_bert else "TreeBERT"
+    run_name = f'{model_name}-pt{pretrained}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
         "random-seed": seed,
         "epochs": train_epochs,
         "dataset": dataset,
         "pretrained": pretrained,
-        "model": "Bert" if not use_tree_bert else "TreeBert"
+        "model": model_name
     })
 
     if dataset == 'ID':
