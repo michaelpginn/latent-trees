@@ -383,7 +383,7 @@ class TreeBertLayer(nn.Module):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        constituent_prior,
+        # constituent_prior,
         attention_mask: Optional[torch.IntTensor] = None,
         extended_attention_mask: Optional[torch.FloatTensor] = None,
         head_mask: Optional[torch.FloatTensor] = None,
