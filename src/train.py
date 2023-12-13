@@ -29,7 +29,7 @@ class LogCallback(TrainerCallback):
 
 
 class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
-    def __init__(self, *args, start_epoch=10, **kwargs):
+    def __init__(self, *args, start_epoch=50, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_epoch = start_epoch
 
@@ -108,7 +108,7 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=32, train_epochs=1
         compute_metrics=compute_metrics,
         callbacks=[
             LogCallback,
-            # DelayedEarlyStoppingCallback(early_stopping_patience=3)
+            DelayedEarlyStoppingCallback(early_stopping_patience=3)
         ],
         tokenizer=tokenizer
     )
