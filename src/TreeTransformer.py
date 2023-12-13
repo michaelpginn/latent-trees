@@ -183,7 +183,7 @@ class GroupAttention(nn.Module):
 
 
 class TreeBertLayer(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, disable_treeing=False):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
         self.seq_len_dim = 1
@@ -197,6 +197,7 @@ class TreeBertLayer(nn.Module):
 
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
+        self.disable_treeing = disable_treeing
 
     def forward(
         self,
@@ -210,8 +211,12 @@ class TreeBertLayer(nn.Module):
         past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
         output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
-        # Compute constituency attention in order to mask attention
-        constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
+        constituent_attention_output = None
+        neighboring_attention = None
+
+        if not self.disable_treeing:
+            # Compute constituency attention in order to mask attention
+            constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
 
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attention_output: torch.Tensor = self.attention(
@@ -243,10 +248,10 @@ Like a BERT encoder, but adds a *constituent prior*, which constrains items to o
 other items in the same constituent at each level.
 """
 class TreeBertEncoder(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, disable_treeing=False):
         super().__init__()
         self.config = config
-        self.layer = nn.ModuleList([TreeBertLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layer = nn.ModuleList([TreeBertLayer(config, disable_treeing=disable_treeing) for _ in range(config.num_hidden_layers)])
         self.gradient_checkpointing = False
 
     def forward(
@@ -280,7 +285,7 @@ class TreeBertEncoder(nn.Module):
         break_probs = []
 
         # Keep previous layer constituent attentions
-        constituent_prior = 0.
+        previous_group_probs = 0.
 
         for i, layer_module in enumerate(self.layer):
             if output_hidden_states:
@@ -300,7 +305,7 @@ class TreeBertEncoder(nn.Module):
                 layer_outputs = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(layer_module),
                     hidden_states,
-                    constituent_prior,
+                    previous_group_probs,
                     attention_mask,
                     extended_attention_mask,
                     layer_head_mask,
@@ -310,7 +315,7 @@ class TreeBertEncoder(nn.Module):
             else:
                 layer_outputs = layer_module(
                     hidden_states,
-                    constituent_prior,
+                    previous_group_probs,
                     attention_mask,
                     extended_attention_mask,
                     layer_head_mask,
@@ -328,7 +333,7 @@ class TreeBertEncoder(nn.Module):
                 if self.config.add_cross_attention:
                     all_cross_attentions = all_cross_attentions + (layer_outputs[4],)
 
-            constituent_prior = layer_outputs[1]
+            previous_group_probs = layer_outputs[1]
             break_probs.append(layer_outputs[2])
 
         if output_hidden_states:
@@ -375,11 +380,11 @@ class TreeBertModel(BertModel):
     `add_cross_attention` set to `True`; an `encoder_hidden_states` is then expected as an input to the forward pass.
     """
 
-    def __init__(self, config, add_pooling_layer=True):
+    def __init__(self, config, add_pooling_layer=True, disable_treeing=False):
         super().__init__(config)
 
         # Replace encoder block with Tree Encoder
-        self.encoder = TreeBertEncoder(config)
+        self.encoder = TreeBertEncoder(config, disable_treeing=disable_treeing)
 
     @add_start_docstrings_to_model_forward(BERT_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
     def forward(
@@ -525,10 +530,10 @@ class SequenceClassifierOutputWithConstituentAttention(SequenceClassifierOutput)
     """
 )
 class TreeBertForSequenceClassification(BertForSequenceClassification):
-    def __init__(self, config):
+    def __init__(self, config, disable_treeing=False):
         super().__init__(config)
 
-        self.bert = TreeBertModel(config)
+        self.bert = TreeBertModel(config, disable_treeing=disable_treeing)
 
         # Initialize weights and apply final processing
         self.post_init()
