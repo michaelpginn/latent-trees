@@ -64,10 +64,10 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=64, train_epochs=1
     elif dataset == 'GEN':
         dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GEN")
     else:
-        dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GENX")
+        dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GENX", download_mode='force_redownload')
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    
+
     max_length = 100 if dataset != 'GENX' else 260
 
     def tokenize_function(example):
