@@ -43,7 +43,7 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 
 
 @click.command()
-@click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN'], case_sensitive=False))
+@click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN', 'GENX'], case_sensitive=False))
 @click.option('--pretrained', is_flag=True)
 @click.option('--train_epochs', type=int)
 @click.option('--use_tree_bert', is_flag=True)
@@ -61,8 +61,10 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=64, train_epochs=1
 
     if dataset == 'ID':
         dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-ID")
-    else:
+    elif dataset == 'GEN':
         dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GEN")
+    else:
+        dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GENX")
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     max_length = 100
