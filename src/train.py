@@ -67,7 +67,9 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=64, train_epochs=1
         dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GENX")
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    max_length = 100
+    
+    max_length = 100 if dataset != 'GENX' else 260
+
     def tokenize_function(example):
         return tokenizer(example['text'], max_length=max_length, truncation=True)
     dataset = dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
