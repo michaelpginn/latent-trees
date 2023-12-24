@@ -32,7 +32,8 @@ def group_texts(examples):
 
 
 tokenized_datasets = datasets.load_dataset("michaelginn/bert_dataset_tokenized")
-tokenized_datasets.remove_columns(['text'])
+tokenized_datasets = tokenized_datasets.remove_columns(['text'])
+print(tokenized_datasets)
 tokenized_datasets = tokenized_datasets.map(group_texts, batched=True, num_proc=num_proc)
 # shuffle dataset
 tokenized_datasets = tokenized_datasets.shuffle(seed=34)
