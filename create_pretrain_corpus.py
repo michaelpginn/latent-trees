@@ -3,17 +3,17 @@ from transformers import BertTokenizer
 from itertools import chain
 import multiprocessing
 
-# bookcorpus = datasets.load_dataset("bookcorpus", split="train")
-# wiki = datasets.load_dataset("wikipedia", "20220301.en", split="train")
-# wiki = wiki.remove_columns([col for col in wiki.column_names if col != "text"])
-# dataset = datasets.concatenate_datasets([bookcorpus, wiki])
+bookcorpus = datasets.load_dataset("bookcorpus", split="train")
+wiki = datasets.load_dataset("wikipedia", "20220301.en", split="train")
+wiki = wiki.remove_columns([col for col in wiki.column_names if col != "text"])
+dataset = datasets.concatenate_datasets([bookcorpus, wiki])
 
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 num_proc = multiprocessing.cpu_count()
 
-# def tokenize_function(example):
-#     return tokenizer(example['text'], max_length=tokenizer.model_max_length, truncation=True)
-# tokenized_datasets = dataset.map(tokenize_function, batched=True, num_proc=num_proc, load_from_cache_file=False)
+def tokenize_function(example):
+    return tokenizer(example['text'], max_length=tokenizer.model_max_length, truncation=True)
+tokenized_datasets = dataset.map(tokenize_function, batched=True, num_proc=num_proc, load_from_cache_file=False)
 
 def group_texts(examples):
     # Concatenate all texts.
