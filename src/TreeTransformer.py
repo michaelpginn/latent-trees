@@ -10,7 +10,7 @@ import torch.utils.checkpoint
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
-from transformers import BertForSequenceClassification, BertModel
+from transformers import BertForSequenceClassification, BertModel, BertForMaskedLM
 from transformers.models.bert.modeling_bert import (
     BertSelfOutput,
     find_pruneable_heads_and_indices,
@@ -22,12 +22,14 @@ from transformers.models.bert.modeling_bert import (
     BertIntermediate,
     BertOutput,
     BertLayer,
-    BertSelfAttention
+    BertSelfAttention,
+    BertOnlyMLMHead
 )
 from transformers.modeling_outputs import (
     BaseModelOutputWithPoolingAndCrossAttentions,
     BaseModelOutputWithPastAndCrossAttentions,
-    SequenceClassifierOutput
+    SequenceClassifierOutput,
+    MaskedLMOutput
 )
 from transformers.utils import (
     ModelOutput,
@@ -185,77 +187,6 @@ class TreeBertAttention(BertAttention):
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
         return outputs
-
-
-# def clones(module, N):
-#     "Produce N identical layers."
-#     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
-#
-
-# def attention(query, key, value, mask=None, dropout=None, group_prob=None):
-#     "Compute 'Scaled Dot Product Attention'"
-#     d_k = query.size(-1)
-#     num_attention_heads = query.size(-3)
-#     device = value.device
-#     # print("query", query.size())
-#
-#     scores = torch.matmul(query, key.transpose(-2, -1)) \
-#              / math.sqrt(d_k)
-#     if mask is not None:
-#         seq_len = query.size()[-2]
-#         b = torch.from_numpy(np.diag(np.ones(seq_len, dtype=np.int32), 0)).to(device)
-#         combined_mask = []
-#         for row in mask:
-#             combined_mask.append(row | b)
-#         combined_mask = torch.stack(combined_mask)
-#         # print("combined", combined_mask)
-#         # NOTE: this may not be correct
-#         combined_mask = combined_mask.unsqueeze(-3).repeat(1, num_attention_heads, 1, 1)
-#         # print("combined unsqueezed", combined_mask)
-#         # print("scores", scores.size())
-#         scores = scores.masked_fill(combined_mask == 0, -1e9)
-#     if group_prob is not None:
-#         p_attn = torch.nn.functional.softmax(scores, dim=-1)
-#         p_attn = p_attn * group_prob.unsqueeze(1)
-#     else:
-#         p_attn = torch.nn.functional.softmax(scores, dim=-1)
-#     if dropout is not None:
-#         p_attn = dropout(p_attn)
-#     return torch.matmul(p_attn, value), p_attn
-
-
-# class MultiHeadedAttention(nn.Module):
-#     def __init__(self, num_attention_heads, d_model, dropout=0.1):
-#         "Take in model size and number of heads."
-#         super(MultiHeadedAttention, self).__init__()
-#         assert d_model % num_attention_heads == 0
-#         # We assume d_v always equals d_k
-#         self.d_k = d_model // num_attention_heads
-#         self.h = num_attention_heads
-#         self.linears = clones(nn.Linear(d_model, d_model), 4)
-#         self.attn = None
-#         self.dropout = nn.Dropout(p=dropout)
-#
-#     def forward(self, query, key, value, group_prob=None, mask=None):
-#         if mask is not None:
-#             # Same mask applied to all h heads.
-#             mask = mask.unsqueeze(1)
-#         nbatches = query.size(0)
-#
-#         # 1) Do all the linear projections in batch from d_model => h x d_k
-#         # query,key,value shape: (nbatches, h, seq_len, d_k)
-#         query, key, value = \
-#             [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
-#              for l, x in zip(self.linears, (query, key, value))]
-#
-#         # 2) Apply attention on all the projected vectors in batch.
-#         x, self.attn = attention(query, key, value, mask=mask,
-#                                  dropout=self.dropout, group_prob=group_prob)
-#
-#         # 3) "Concat" using a view and apply a final linear.
-#         x = x.transpose(1, 2).contiguous() \
-#             .view(nbatches, -1, self.h * self.d_k)
-#         return self.linears[-1](x)
 
 
 class GroupAttention(nn.Module):
@@ -760,3 +691,77 @@ class TreeBertForSequenceClassification(BertForSequenceClassification):
         seq_outputs.break_probs = outputs.break_probs
         # print(outputs.break_probs)
         return seq_outputs
+
+
+class TreeBertForMaskedLM(BertForMaskedLM):
+    def __init__(self, config):
+        super().__init__(config)
+
+        if config.is_decoder:
+            logger.warning(
+                "If you want to use `BertForMaskedLM` make sure `config.is_decoder=False` for "
+                "bi-directional self-attention."
+            )
+
+        self.bert = TreeBertModel(config, add_pooling_layer=False, disable_treeing=False)
+        self.cls = BertOnlyMLMHead(config)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.Tensor] = None,
+        labels: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple[torch.Tensor], MaskedLMOutput]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Labels for computing the masked language modeling loss. Indices should be in `[-100, 0, ...,
+            config.vocab_size]` (see `input_ids` docstring) Tokens with indices set to `-100` are ignored (masked), the
+            loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
+        """
+
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs: BaseModelOutputWithPoolingAndCrossAttentionsAndConstituentAttention = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            encoder_hidden_states=encoder_hidden_states,
+            encoder_attention_mask=encoder_attention_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        sequence_output = outputs[0]
+        prediction_scores = self.cls(sequence_output)
+
+        masked_lm_loss = None
+        if labels is not None:
+            loss_fct = CrossEntropyLoss()  # -100 index = padding token
+            masked_lm_loss = loss_fct(prediction_scores.view(-1, self.config.vocab_size), labels.view(-1))
+
+        if not return_dict:
+            output = (prediction_scores,) + outputs[2:]
+            return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+
+        return MaskedLMOutput(
+            loss=masked_lm_loss,
+            logits=prediction_scores,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+        )
