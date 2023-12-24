@@ -54,7 +54,7 @@ def train(train_epochs=100):
     })
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    dataset = datasets.load_dataset("michaelginn/bert_dataset_tokenized_grouped")
+    dataset = datasets.load_dataset("michaelginn/bert_data_tokenized_grouped")
 
     # Create random initialized BERT model
     config = BertConfig()
