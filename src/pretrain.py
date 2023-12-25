@@ -45,7 +45,7 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 @click.command()
 @click.option('--train_epochs', type=int)
 def train(train_epochs=100):
-    batch_size = 64
+    batch_size = 32
     random.seed(0)
     wandb.init(project='latent-trees-pretraining', entity="michael-ginn", config={
         "random-seed": 0,
