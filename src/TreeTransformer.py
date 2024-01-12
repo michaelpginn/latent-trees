@@ -127,7 +127,7 @@ class TreeBertSelfAttention(BertSelfAttention):
             attention_scores = attention_scores + attention_mask
 
         if constituent_attention_probs is not None:
-            print('constituents', constituent_attention_probs)
+            # print('constituents', constituent_attention_probs)
             # Component-wise multiplication between attention scores (batches * heads * sequence * sequence) and
             # constituent attention (batches * sequence * sequence)
             attention_scores = attention_scores * constituent_attention_probs.unsqueeze(1).repeat(1, self.num_attention_heads, 1, 1)

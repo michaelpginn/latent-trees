@@ -23,9 +23,9 @@ def compute_metrics(eval_pred):
 
 
 class LogCallback(TrainerCallback):
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        # Print the logs or push them to your preferred logging framework
-        print(logs)
+    def on_epoch_end(self, args, state, control, **kwargs):
+        # Log the training loss to wandb
+        wandb.log({"train_loss": state.log_history[-1]["loss"]}, step=state.global_step)
 
 
 class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
@@ -44,8 +44,8 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 
 @click.command()
 @click.option('--train_epochs', type=int)
-def train(train_epochs=100):
-    batch_size = 16
+def train(train_epochs=40):
+    batch_size = 8
     random.seed(0)
     wandb.init(project='latent-trees-pretraining', entity="michael-ginn", config={
         "random-seed": 0,
@@ -63,15 +63,15 @@ def train(train_epochs=100):
 
     args = TrainingArguments(
         output_dir=f"../training-checkpoints",
-        evaluation_strategy="epoch",
+        # evaluation_strategy="epoch",
         weight_decay=0.01,
         per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
+        # per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=64,
         save_strategy="epoch",
         save_total_limit=3,
         num_train_epochs=train_epochs,
-        load_best_model_at_end=True,
+        # load_best_model_at_end=True,
         logging_strategy='epoch',
         report_to='wandb'
     )
@@ -79,12 +79,9 @@ def train(train_epochs=100):
     trainer = Trainer(
         model,
         args,
-        train_dataset=dataset['train'],
-        # eval_dataset=dataset['eval'],
-        # compute_metrics=compute_metrics,
+        train_dataset=dataset['train'].select(range(10000)),
         callbacks=[
             LogCallback,
-            # DelayedEarlyStoppingCallback(early_stopping_patience=3)
         ],
         tokenizer=tokenizer,
         data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=0.15)
