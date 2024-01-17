@@ -79,7 +79,7 @@ def train(train_epochs=100):
     trainer = Trainer(
         model,
         args,
-        train_dataset=dataset['train'].select(range(100000)),
+        train_dataset=dataset['train'].select(range(1000000)),
         # eval_dataset=dataset['eval'],
         # compute_metrics=compute_metrics,
         callbacks=[
