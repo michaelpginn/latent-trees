@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1           # Number of requested nodes
-#SBATCH --gres=gpu:3
+#SBATCH --gres=gpu
 #SBATCH --ntasks=4          # Number of requested cores
 #SBATCH --mem=32G
-#SBATCH --time=7-00:00:00          # Max walltime              # Specify QOS
+#SBATCH --time=20-00:00:00          # Max walltime              # Specify QOS
 #SBATCH --qos=blanca-curc-gpu
 #SBATCH --partition=blanca-curc-gpu
 #SBATCH --account=blanca-curc-gpu
