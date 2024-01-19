@@ -44,18 +44,18 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 
 @click.command()
 @click.option('--dataset', required=True, type=click.Choice(['ID', 'GEN', 'GENX'], case_sensitive=False))
-@click.option('--pretrained', is_flag=True)
+@click.option('--pretrained_model', type=str)
 @click.option('--train_epochs', type=int)
 @click.option('--use_tree_bert', is_flag=True)
-def train(dataset='ID', pretrained: bool = False,  batch_size=64, train_epochs=100, use_tree_bert: bool = False, seed=1):
+def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epochs=100, use_tree_bert: bool = False, seed=1):
     random.seed(seed)
     model_name = "BERT" if not use_tree_bert else "TreeBERT"
-    run_name = f'{model_name}-pt{pretrained}-{dataset}'
+    run_name = f'{model_name}-pt{"False" if pretrained_model is None else pretrained_model}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
         "random-seed": seed,
         "epochs": train_epochs,
         "dataset": dataset,
-        "pretrained": pretrained,
+        "pretrained": pretrained_model,
         "model": model_name
     })
 
@@ -77,8 +77,8 @@ def train(dataset='ID', pretrained: bool = False,  batch_size=64, train_epochs=1
     id2label = {0: "VIOLATION", 1: "GRAMMATICAL"}
     label2id = {"VIOLATION": 0, "GRAMMATICAL": 1}
 
-    if pretrained:
-        config = BertConfig.from_pretrained('bert-base-uncased', num_labels=2, id2label=id2label, label2id=label2id)
+    if pretrained_model is not None:
+        config = BertConfig.from_pretrained(pretrained_model, num_labels=2, id2label=id2label, label2id=label2id)
     else:
         # Create random initialized BERT model
         config = BertConfig(num_labels=2, id2label=id2label, label2id=label2id)
