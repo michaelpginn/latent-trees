@@ -1,10 +1,12 @@
 #!/bin/bash
 #SBATCH --nodes=1           # Number of requested nodes
-#SBATCH --gres=gpu:v100
+#SBATCH --gres=gpu
 #SBATCH --ntasks=4          # Number of requested cores
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00          # Max walltime              # Specify QOS
-#SBATCH --qos=blanca-kann
+#SBATCH --qos=blanca-curc-gpu
+#SBATCH --partition=blanca-curc-gpu
+#SBATCH --account=blanca-curc-gpu
 #SBATCH --out=train.%j.out      # Output file name
 #SBATCH --error=train.%j.err
 #SBATCH --mail-type=ALL
@@ -20,11 +22,11 @@ conda activate AutoIGT
 cd /projects/migi8081/latent-trees/src
 
 #python3 train.py --dataset 'ID' --train_epochs 1000
-#python3 train.py --dataset 'ID' --pretrained --train_epochs 1000
+#python3 train.py --dataset 'ID' --pretrained_model "bert-base-uncased" --train_epochs 1000
 #python3 train.py --dataset 'GEN' --train_epochs 1000
-#python3 train.py --dataset 'GEN' --pretrained --train_epochs 1000
+#python3 train.py --dataset 'GEN' --pretrained_model "bert-base-uncased" --train_epochs 1000
 #python3 train.py --dataset 'GENX' --train_epochs 1000
-#python3 train.py --dataset 'GENX' --pretrained --train_epochs 1000
+#python3 train.py --dataset 'GENX' --pretrained_model "bert-base-uncased" --train_epochs 1000
 
 #python3 train.py --dataset 'ID' --train_epochs 1000 --use_tree_bert
 python3 train.py --dataset 'ID' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000  --use_tree_bert
