@@ -50,7 +50,7 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epochs=100, use_tree_bert: bool = False, seed=1):
     random.seed(seed)
     model_name = "BERT" if not use_tree_bert else "TreeBERT"
-    run_name = f'{model_name}-pt{"False" if pretrained_model is None else pretrained_model}-{dataset}'
+    run_name = f'{model_name}-pt{"False" if pretrained_model is None else "True"}-{dataset}'
     wandb.init(project='latent-trees-agreement', entity="michael-ginn", name=run_name, config={
         "random-seed": seed,
         "epochs": train_epochs,

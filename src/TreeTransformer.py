@@ -206,7 +206,7 @@ class GroupAttention(nn.Module):
     def forward(self,
                 hidden_states: torch.Tensor,
                 attention_mask: Optional[torch.IntTensor],
-                prior: torch.FloatTensor):
+                previous_layer_neighboring_attention: torch.FloatTensor):
         """
         Computes constituent attention, a sequence a_1...a_n of probabilities where a_i is the probability that token
         w_i and neighbor word w_i+1 are the same constituent. Also computes the *constituent prior* C, a matrix (i, j)
@@ -214,7 +214,7 @@ class GroupAttention(nn.Module):
 
         :param hidden_states: Token hidden states at a layer
         :param attention_mask: Attention mask for tokens
-        :param prior: Group attention weights from the previous layer
+        :param previous_layer_neighboring_attention: Group attention weights from the previous layer
         :return: (C, a)
         """
         device = hidden_states.device
@@ -225,32 +225,39 @@ class GroupAttention(nn.Module):
 
         # Selects, for each item in the sequence, the item before (a), the item (b), and the item after (c)
         a = torch.from_numpy(np.diag(np.ones(seq_len - 1, dtype=np.int32), 1)).to(device)
-        b = torch.from_numpy(np.diag(np.ones(seq_len, dtype=np.int32), 0)).to(device)
+        b = torch.from_numpy(np.diag(np.ones(seq_len, dtype=np.int32), 0)).to(device) # seq_length * seq_length
         c = torch.from_numpy(np.diag(np.ones(seq_len - 1, dtype=np.int32), -1)).to(device)
+
         tri_matrix = torch.from_numpy(np.triu(np.ones([seq_len, seq_len], dtype=np.float32), 0)).to(device)
 
         # Mask for just the previous and next token
         mask = []
+        """(batch_size * seq_length * seq_length)"""
+
         for row in attention_mask:
             mask.append(row & (a+c))
         mask = torch.stack(mask)
-        # mask = attention_mask & (a + c)
 
         key = self.linear_key(hidden_states)
         query = self.linear_query(hidden_states)
 
         # Compute attention scores between all states
         scores: torch.Tensor = torch.matmul(query, key.transpose(-2, -1)) / self.d_model
+        """(batch_size * seq_length * seq_length)"""
 
         # Mask out scores other than previous & next
         scores = scores.masked_fill(mask == 0, -1e9)
 
         # Softmax so token must attend to either previous or next, but not both
         neighboring_attention = torch.nn.functional.softmax(scores, dim=-1)
+
+        # a_i: Average left and right attention link for each token
         neighboring_attention = torch.sqrt(neighboring_attention * neighboring_attention.transpose(-2, -1) + 1e-9)
 
-        neighboring_attention = prior + (1. - prior) * neighboring_attention
+        # Neighboring attention should be strictly increasing layer to layer
+        neighboring_attention = previous_layer_neighboring_attention + (1. - previous_layer_neighboring_attention) * neighboring_attention
 
+        # Compute the constituent attention matrix for every a, b by multiplying attention scores over a...b
         t = torch.log(neighboring_attention + 1e-9).masked_fill(a == 0, 0).matmul(tri_matrix)
         constituent_attention = tri_matrix.matmul(t).exp().masked_fill((tri_matrix.int() - b) == 0, 0)
         constituent_attention = constituent_attention + constituent_attention.transpose(-2, -1) \
@@ -280,7 +287,7 @@ class TreeBertLayer(BertLayer):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        constituent_prior,
+        previous_layer_neighboring_attention,
         attention_mask: Optional[torch.IntTensor] = None,
         extended_attention_mask: Optional[torch.FloatTensor] = None,
         head_mask: Optional[torch.FloatTensor] = None,
@@ -294,7 +301,7 @@ class TreeBertLayer(BertLayer):
         neighboring_attention = None
         if not self.disable_treeing:
             # Compute constituency attention in order to mask attention
-            constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, constituent_prior)
+            constituent_attention_output, neighboring_attention = self.group_attention(hidden_states, attention_mask, previous_layer_neighboring_attention)
 
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
@@ -315,6 +322,7 @@ class TreeBertLayer(BertLayer):
                                     attention_outputs=self_attention_outputs[1:],
                                     constituent_attention_output=constituent_attention_output,
                                     neighboring_attention=neighboring_attention)
+
 
 class BaseModelOutputWithPastAndCrossAttentionsAndConstituentAttention(BaseModelOutputWithPastAndCrossAttentions):
     break_probs: Optional[Tuple[torch.FloatTensor]] = None
@@ -412,7 +420,7 @@ class TreeBertEncoder(nn.Module):
                 if self.config.add_cross_attention:
                     all_cross_attentions = all_cross_attentions + (layer_outputs.attention_outputs[1],)
 
-            previous_group_probs = layer_outputs.constituent_attention_output
+            previous_group_probs = layer_outputs.neighboring_attention
             break_probs.append(layer_outputs.neighboring_attention)
 
         if output_hidden_states:
@@ -437,7 +445,7 @@ class TreeBertEncoder(nn.Module):
             attentions=all_self_attentions,
             cross_attentions=all_cross_attentions,
         )
-        # output.break_probs = tuple(break_probs)
+        output.break_probs = tuple(break_probs)
         return output
 
 
@@ -650,6 +658,8 @@ class TreeBertForSequenceClassification(BertForSequenceClassification):
             return_dict=return_dict,
         )
 
+        # print(outputs.break_probs)
+
         pooled_output = outputs[1]
 
         pooled_output = self.dropout(pooled_output)
@@ -765,3 +775,7 @@ class TreeBertForMaskedLM(BertForMaskedLM):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+
+def parse_tree(model: TreeBertForSequenceClassification, row, threshold=0.8):
+    """For a tokenized text, produces a tree representation using link probabilities"""
