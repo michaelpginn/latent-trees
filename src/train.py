@@ -78,7 +78,7 @@ def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epoc
     label2id = {"VIOLATION": 0, "GRAMMATICAL": 1}
 
     if pretrained_model is not None:
-        config = BertConfig.from_pretrained(pretrained_model, num_labels=2, id2label=id2label, label2id=label2id)
+        config = BertConfig.from_pretrained(pretrained_model, num_labels=2, id2label=id2label, label2id=label2id, force_download=True)
     else:
         # Create random initialized BERT model
         config = BertConfig(num_labels=2, id2label=id2label, label2id=label2id)
