@@ -21,19 +21,39 @@ conda activate AutoIGT
 # Run Python Script
 cd /projects/migi8081/latent-trees/src
 
-for seed in 1 2 3 4 5
-do
-  python3 train.py --dataset 'ID' --train_epochs 1000 --seed $seed
-  python3 train.py --dataset 'ID' --pretrained_model "bert-base-uncased" --train_epochs 1000 --seed $seed
-  python3 train.py --dataset 'GEN' --train_epochs 1000 --seed $seed
-  python3 train.py --dataset 'GEN' --pretrained_model "bert-base-uncased" --train_epochs 1000 --seed $seed
-  python3 train.py --dataset 'GENX' --train_epochs 1000 --seed $seed
-  python3 train.py --dataset 'GENX' --pretrained_model "bert-base-uncased" --train_epochs 1000 --seed $seed
+#for seed in 1 2 3 4 5 6 7 8 9 10
+#do
+#  python3 train.py --dataset 'ID' --train_epochs 1000 --seed $seed
+#  python3 train.py --dataset 'ID' --pretrained_model "bert-base-uncased" --train_epochs 1000 --seed $seed
+#  python3 train.py --dataset 'GEN' --train_epochs 1000 --seed $seed
+#  python3 train.py --dataset 'GEN' --pretrained_model "bert-base-uncased" --train_epochs 1000 --seed $seed
+#  python3 train.py --dataset 'GENX' --train_epochs 1000 --seed $seed
+#  python3 train.py --dataset 'GENX' --pretrained_model "bert-base-uncased" --train_epochs 1000 --seed $seed
+#
+#  python3 train.py --dataset 'ID' --train_epochs 1000 --use_tree_bert --seed $seed
+#  python3 train.py --dataset 'ID' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000  --use_tree_bert --seed $seed
+#  python3 train.py --dataset 'GEN' --train_epochs 1000  --use_tree_bert --seed $seed
+#  python3 train.py --dataset 'GEN' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000  --use_tree_bert --seed $seed
+#  python3 train.py --dataset 'GENX' --train_epochs 1000  --use_tree_bert --seed $seed
+#  python3 train.py --dataset 'GENX' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000 --use_tree_bert --seed $seed
+#done
 
-  python3 train.py --dataset 'ID' --train_epochs 1000 --use_tree_bert --seed $seed
-  python3 train.py --dataset 'ID' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000  --use_tree_bert --seed $seed
-  python3 train.py --dataset 'GEN' --train_epochs 1000  --use_tree_bert --seed $seed
-  python3 train.py --dataset 'GEN' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000  --use_tree_bert --seed $seed
-  python3 train.py --dataset 'GENX' --train_epochs 1000  --use_tree_bert --seed $seed
-  python3 train.py --dataset 'GENX' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000 --use_tree_bert --seed $seed
+for size in 10 100 1000
+do
+  for seed in 1 2 3 4 5
+  do
+    python3 train.py --dataset 'ID' --train_epochs 1000 --dataset_size $size --seed $seed
+    python3 train.py --dataset 'ID' --pretrained_model "bert-base-uncased" --train_epochs 1000  --dataset_size $size --seed $seed
+    python3 train.py --dataset 'GEN' --train_epochs 1000 --dataset_size $size --seed $seed
+    python3 train.py --dataset 'GEN' --pretrained_model "bert-base-uncased" --train_epochs 1000 --dataset_size $size --seed $seed
+    python3 train.py --dataset 'GENX' --train_epochs 1000 --dataset_size $size --seed $seed
+    python3 train.py --dataset 'GENX' --pretrained_model "bert-base-uncased" --train_epochs 1000 --dataset_size $size --seed $seed
+
+    python3 train.py --dataset 'ID' --train_epochs 1000 --dataset_size $size --use_tree_bert --seed $seed
+    python3 train.py --dataset 'ID' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000 --dataset_size $size  --use_tree_bert --seed $seed
+    python3 train.py --dataset 'GEN' --train_epochs 1000 --dataset_size $size  --use_tree_bert --seed $seed
+    python3 train.py --dataset 'GEN' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000 --dataset_size $size  --use_tree_bert --seed $seed
+    python3 train.py --dataset 'GENX' --train_epochs 1000 --dataset_size $size  --use_tree_bert --seed $seed
+    python3 train.py --dataset 'GENX' --pretrained_model "michaelginn/treebert-pretrained-100k" --train_epochs 1000 --dataset_size $size --use_tree_bert --seed $seed
+  done
 done

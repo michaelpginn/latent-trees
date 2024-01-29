@@ -47,8 +47,10 @@ class DelayedEarlyStoppingCallback(EarlyStoppingCallback):
 @click.option('--pretrained_model', type=str)
 @click.option('--train_epochs', type=int)
 @click.option('--use_tree_bert', is_flag=True)
+@click.option('--dataset_size', type=int)
 @click.option('--seed', type=int)
-def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epochs=100, use_tree_bert: bool = False, seed=1):
+def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epochs=100,
+          use_tree_bert: bool = False, dataset_size=None, seed=1):
     random.seed(seed)
     model_name = "BERT" if not use_tree_bert else "TreeBERT"
     run_name = f'{model_name}-pt{"False" if pretrained_model is None else "True"}-{dataset}-{seed}'
@@ -57,7 +59,8 @@ def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epoc
         "epochs": train_epochs,
         "dataset": dataset,
         "pretrained": pretrained_model,
-        "model": model_name
+        "model": model_name,
+        "train_size": "full" if dataset_size is None else dataset_size
     })
 
     if dataset == 'ID':
@@ -66,6 +69,9 @@ def train(dataset='ID', pretrained_model: str = None,  batch_size=64, train_epoc
         dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GEN")
     else:
         dataset = datasets.load_dataset("michaelginn/latent-trees-agreement-GENX", download_mode='force_redownload')
+
+    if dataset_size is not None:
+        dataset['train'] = dataset['train'].shuffle(seed=seed).select(range(dataset_size))
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
